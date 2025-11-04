@@ -19,6 +19,8 @@ const ProductListingsSchema = new mongoose.Schema( {
         reviewsCount: { type: Number }
     },
     sizes: [String], //e.g ["S","M","XXL"]
+    colors: [String],
+    selectedColors: { type: String, default: "Black" },
     deliveryInfo: {
         freeDelivery: { type: Boolean, default: false },
         payOnDelivery: { type: Boolean, default: false },
