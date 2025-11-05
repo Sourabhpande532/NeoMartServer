@@ -44,13 +44,17 @@ async function addProductToDatabase( newProduct ) {
 app.post( "/products/add", async ( req, res ) => {
     try {
         const payload = req.body;
-        const { name, title } = payload;
-        if ( !name || !title ) {
+        const { name, title, price, category } = payload;
+        if ( !name || !title || !price || !category ) {
             return res.status( 400 ).json( {
                 success: false,
-                message: "Missing required fields: name/title",
+                message: "Missing required fields: name/title/price/category",
             } );
         }
+        // validate category exists
+        /* const cat = await Category.findById(category);
+           if (!cat) return res.status(400).json({ error: 'Invalid category id' });
+        */
         const detailProduct = await addProductToDatabase( payload );
         if ( detailProduct ) {
             res.status( 201 ).json( detailProduct );
@@ -70,9 +74,9 @@ app.post( "/products/add", async ( req, res ) => {
 
 async function getAllProducts() {
     try {
-        const everySingleProduct = await NewProduct.find().populate( "relatedItems" );
+        const products = await NewProduct.find().populate( "relatedItems" ).populate( "category" );
         console.log( "get product!" );
-        return everySingleProduct;
+        return products;
     } catch ( error ) {
         console.error( "Failed to get all data.", error.message );
         throw error;
@@ -80,9 +84,9 @@ async function getAllProducts() {
 }
 app.get( "/api/products", async ( req, res ) => {
     try {
-        const receivedProduct = await getAllProducts();
-        if ( receivedProduct.length != 0 ) {
-            res.status( 200 ).json( receivedProduct );
+        const products = await getAllProducts();
+        if ( products.length != 0 ) {
+            res.status( 200 ).json( { data: { products } } );
         } else {
             res.status( 404 ).json( { success: false, message: "data not found." } );
         }
@@ -99,11 +103,11 @@ app.get( "/api/products", async ( req, res ) => {
 // 2. Functionality: This API call gets product by productId from the db.
 async function getProductById( productId ) {
     try {
-        const productById = await NewProduct.findOne( { _id: productId } ).populate(
+        const product = await NewProduct.findById( productId ).populate(
             "relatedItems"
-        );
+        ).populate( "category" );
         console.log( "Obtained single data!" );
-        return productById;
+        return product;
     } catch ( error ) {
         console.error( "Failed to get data by id", error.message );
         throw error;
@@ -112,17 +116,17 @@ async function getProductById( productId ) {
 
 app.get( "/api/products/:productId", async ( req, res ) => {
     try {
-        const receivedSingleProduct = await getProductById( req.params.productId );
-        if ( !receivedSingleProduct ) {
-            res.status( 404 ).json( { success: false, message: "data not found." } );
+        const product = await getProductById( req.params.productId );
+        if ( !product ) {
+            res.status( 404 ).json( { success: false, message: "product not found." } );
         } else {
-            res.status( 200 ).json( receivedSingleProduct );
+            res.status( 200 ).json( { data: { product } } );
         }
     } catch ( error ) {
         console.error( "Internal sever error:", error.message );
         res.status( 500 ).json( {
             success: false,
-            message: "Internal server error,fetching individual data",
+            message: "Internal server error,fetching individual product",
         } );
     }
 } );
@@ -161,6 +165,7 @@ app.post( "/products/category", async ( req, res ) => {
         res.status( 500 ).json( { success: false, message: "Internal error adding data" } )
     }
 } )
+
 
 // 1.Functionality: This API call gets all categories from the db.
 async function getAllCategories() {
@@ -212,7 +217,7 @@ app.get( "/api/categories", async ( req, res ) => {
 async function getCategoryById( id ) {
     try {
         const category = await NewCategory.findById( id ); // return object 
-        const products = await NewProduct.find( { category: id } ).populate("category") // return selected array those match with id
+        const products = await NewProduct.find( { category: id } ).populate( "category" ) // return selected array those match with id
         console.log( "Redeem Category!" )
         return { category, products };
     } catch ( error ) {
@@ -220,6 +225,7 @@ async function getCategoryById( id ) {
         throw error
     }
 }
+
 /**
  * 
  * 
