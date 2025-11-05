@@ -10,12 +10,12 @@ const ProductListingsSchema = new mongoose.Schema( {
         trim: true
     },
     price: {
-        current: { type: Number, required: true },
+        current: { type: Number, required: true, default: 0 },
         original: { type: Number },
         discountPercent: { type: Number }
     },
     rating: {
-        stars: { type: Number },
+        stars: { type: Number, default: 0 },
         reviewsCount: { type: Number }
     },
     sizes: [String], //e.g ["S","M","XXL"]
@@ -28,6 +28,7 @@ const ProductListingsSchema = new mongoose.Schema( {
         authenticity: { type: Boolean, default: true },
     },
     imgUrl: String,
+    category: { type: mongoose.Schema.Types.ObjectId, ref: "ECategory", required: true },
     description: {
         quality: String,
         design: String,

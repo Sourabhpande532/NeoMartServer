@@ -142,11 +142,17 @@ async function addCategoryToDb( data ) {
     }
 }
 
+// ADD CATEGORIES TO DB 
 app.post( "/products/category", async ( req, res ) => {
     try {
-        const receivedAndGet = await addCategoryToDb( req.body );
+        const payload = req.body;
+        const { name, thumbnailUrl, slug } = payload;
+        if ( !name || !thumbnailUrl || !slug ) {
+            return res.status( 400 ).json( { error: "missing fields required: /name/thumbnailUrl,slug" } )
+        }
+        const receivedAndGet = await addCategoryToDb( payload );
         if ( receivedAndGet ) {
-            res.status( 201 ).json( receivedAndGet )
+            res.status( 201 ).json( { data: { receivedAndGet } } )
         } else {
             res.status( 400 ).json( { success: false, message: "data not found." } )
         }
@@ -159,18 +165,34 @@ app.post( "/products/category", async ( req, res ) => {
 // 1.Functionality: This API call gets all categories from the db.
 async function getAllCategories() {
     try {
-        const everySingleCategory = await NewCategory.find();
-        console.log( "Achieved category!", everySingleCategory );
+        const everySingleCategory = await NewCategory.find().sort( { name: 1 } ); // { name: 1 } → sorts in ascending order (A → Z).
+        console.log( "Achieved category!" );
         return everySingleCategory;
     } catch ( error ) {
         throw error
     }
 }
+
+/** 
+ * 
+ * 
+ * 
+GET /api/categories
+Request URL: /api/categories
+HTTP Method: GET
+Response Body:
+{
+  data: {
+    categories: Array;
+  }
+}
+*/
+
 app.get( "/api/categories", async ( req, res ) => {
     try {
-        const reCaptureCategory = await getAllCategories();
-        if ( reCaptureCategory.length > 0 ) {
-            res.status( 200 ).json( reCaptureCategory )
+        const categories = await getAllCategories();
+        if ( categories.length > 0 ) {
+            res.status( 200 ).json( { data: { categories } } )
         } else {
             res.status( 404 ).json( { success: false, message: "Data not found." } )
         }
@@ -179,30 +201,71 @@ app.get( "/api/categories", async ( req, res ) => {
     }
 } )
 
+
 // 2. Functionality: This API call gets category by categoryId from the db.
+/**
+ * GET /api/categories/:categoryId
+ * returns category + products in that category
+ * { data: { category: { ... , products: [...] } } }
+ */
+
 async function getCategoryById( id ) {
     try {
-        const exclusiveCategory = await NewCategory.findOne( { _id: id } )
-        console.log( "Redeem Category", exclusiveCategory )
-        return exclusiveCategory;
+        const category = await NewCategory.findById( id ); // return object 
+        const products = await NewProduct.find( { category: id } ).populate("category") // return selected array those match with id
+        console.log( "Redeem Category!" )
+        return { category, products };
     } catch ( error ) {
         console.error( "Failed to get category!", error.message );
         throw error
     }
 }
+/**
+ * 
+ * 
+ * GET /api/categories/:categoryId
+Request URL: /api/categories/:categoryId
+HTTP Method: GET
+Response Body:
+{
+  data: {
+    category: Object;
+  }
+}
+ *  */
 app.get( "/api/categories/:categoryId", async ( req, res ) => {
     try {
-        const categoryStatus = await getCategoryById( req.params.categoryId )
-        if ( categoryStatus ) {
-            res.status( 200 ).json( categoryStatus )
-        } else {
-            res.status( 404 ).json( { success: false, message: "data not found." } )
-        }
+        const { categoryId } = req.params;
+        const { category, products } = await getCategoryById( categoryId )
+        if ( !category ) return res.status( 404 ).json( { error: "Category not found" } )
+        res.json( { data: { category: { ...category.toObject(), products } } } )
     } catch ( error ) {
         console.error( "Failed to get category by id", error.message )
         res.status( 500 ).json( { success: false, message: "Internal error api/id" } )
     }
 } )
+
+/* NOTES: 
+Step Purpose
+category-Mongoose document (not plain object)
+.toObject()-Converts to normal JS object
+{ ...category.toObject(), products }-Merges the category fields + its related products
+res.json()-Sends clean, serializable JSON to the client
+category.toObject() converts the Mongoose document into a plain JavaScript object — stripping away all Mongoose-specific properties and methods.because: This returns a Mongoose Document, not a plain JavaScript object.const category = await Category.findById(categoryId);
+result: {
+  "data": {
+    "category": {
+      "_id": "...",
+      "name": "Electronics",
+      "slug": "electronics",
+      "thumbnailUrl": "...",
+      "products": [ ... ]
+    }
+  }
+}
+
+*/
+
 app.get( "/", ( req, res ) => {
     res.send( "Hello, Welcome to exress routess." );
 } );
